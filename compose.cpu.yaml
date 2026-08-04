@@ -1,0 +1,6 @@
+services:
+  yolo-pipeline:
+    build:
+      args:
+        ULTRALYTICS_IMAGE: ultralytics/ultralytics:8.4.115-cpu
+    image: yolo-training-pipeline:cpu

@@ -1,0 +1,19 @@
+services:
+  yolo-pipeline:
+    build:
+      context: .
+      args:
+        ULTRALYTICS_IMAGE: ultralytics/ultralytics:8.4.115
+    image: yolo-training-pipeline:gpu
+    user: "10001:10001"
+    volumes:
+      - ./input:/workspace/input
+      - ./workspace:/workspace/jobs
+      - ./artifacts:/workspace/artifacts
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]

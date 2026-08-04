@@ -1,0 +1,11 @@
+.env
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+*.py[cod]
+input/*
+!input/.gitkeep
+workspace/*
+!workspace/.gitkeep
+artifacts/*
+!artifacts/.gitkeep
