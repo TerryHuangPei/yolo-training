@@ -38,6 +38,18 @@ For native video inference:
 
 Native macOS jobs use the repository-local `input/`, `workspace/`, and `artifacts/` directories. Docker continues to use its `/workspace/...` mounts via environment variables.
 
+### Live screen inference (native macOS)
+
+Use the trained `.pt` model to detect objects directly from one of your displays:
+
+```sh
+.venv/bin/yolo-pipeline predict-screen --model artifacts/jobs/JOB_ID/model/best.pt
+```
+
+The display is shown in a preview window with bounding boxes; press `q` or `Esc` to stop.
+`--monitor 1` is the first physical display (`--monitor 2` is the next); use `--conf 0.4`,
+`--imgsz 640`, or `--device mps` as needed. On first use macOS prompts for **Screen Recording** permission. Enable it for the terminal app (or the IDE) that launched the command in **System Settings → Privacy & Security → Screen & System Audio Recording**, then restart the command. This feature must run natively on macOS—Docker containers cannot access the host desktop this way.
+
 ### Docker
 
 CPU (recommended without NVIDIA):

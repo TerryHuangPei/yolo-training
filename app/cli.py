@@ -9,6 +9,7 @@ import typer
 
 from app.config import settings_from_yaml
 from app.exceptions import PipelineError
+from app.inference.screen import predict_screen
 from app.inference.video import predict_video
 from app.pipeline.manifest import Manifest
 from app.pipeline.runner import PipelineRunner
@@ -93,6 +94,19 @@ def predict_video_command(
         else Path("/workspace/artifacts/inference")
     )
     typer.echo(json.dumps(predict_video(model, source, output, conf, imgsz, select_device(device))))
+
+
+@app.command("predict-screen")
+@handle
+def predict_screen_command(
+    model: Path,
+    conf: float = 0.25,
+    imgsz: int = 640,
+    device: str | None = None,
+    monitor: int = 1,
+) -> None:
+    """Show live detection results for a physical display; press q or Escape to stop."""
+    predict_screen(model, conf, imgsz, select_device(device), monitor)
 
 
 @app.command("job")
