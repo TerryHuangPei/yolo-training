@@ -1,0 +1,9 @@
+# Apple Silicon / macOS native dependencies. Install with scripts/setup-macos.sh.
+# pip resolves the matching arm64 PyTorch wheel required by ultralytics.
+ultralytics==8.4.115
+typer>=0.12,<1
+pydantic-settings>=2.2,<3
+PyYAML>=6,<7
+Pillow>=10,<12
+pytest>=8.3,<9
+ruff>=0.9,<1

@@ -9,9 +9,9 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="YOLO_", env_file=".env", extra="ignore")
-    input_dir: Path = Path("/workspace/input")
-    jobs_dir: Path = Path("/workspace/jobs")
-    artifacts_dir: Path = Path("/workspace/artifacts")
+    input_dir: Path = Path("input")
+    jobs_dir: Path = Path("workspace")
+    artifacts_dir: Path = Path("artifacts")
     model: str = "yolo26n.pt"
     epochs: int = 100
     imgsz: int = 640

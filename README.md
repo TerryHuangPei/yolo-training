@@ -1,6 +1,6 @@
 # YOLO Training Pipeline
 
-Container-first automation for validating YOLO detection datasets, training Ultralytics YOLO, promoting `best.pt`, and streaming video inference. It requires Python 3.11 inside the supplied Docker image; no host Python is used.
+Automation for validating YOLO detection datasets, training Ultralytics YOLO, promoting `best.pt`, and streaming video inference. It supports Docker on Linux/NVIDIA and native Apple Silicon macOS execution.
 
 ## Input datasets
 
@@ -9,6 +9,36 @@ Split datasets contain `images/train`, `images/val`, parallel `labels/train`, `l
 Validation detects corrupt images, malformed labels, invalid classes/boxes, missing counterparts, exact duplicate images, split leakage, Zip Slip, ZIP symlinks, limits, and compression bombs. Reports are written to each job.
 
 ## Run
+
+### Native Apple Silicon macOS
+
+The `mac-version` branch runs directly on a Mac and deliberately does not use the Linux `amd64` Ultralytics image. This avoids Docker's `linux/amd64` versus `linux/arm64/v8` platform mismatch. Python 3.11 is required; install it with Homebrew if needed:
+
+```sh
+brew install python@3.11
+make mac-setup
+make mac-doctor
+make mac-lint
+make mac-test
+```
+
+`mac-doctor` reports whether Metal Performance Shaders (MPS) is available. The pipeline automatically selects `mps` when it is available, otherwise CPU. To train, put the archive in `input/dataset.zip` and run:
+
+```sh
+make mac-pipeline
+# Or pass paths and settings explicitly:
+.venv/bin/yolo-pipeline pipeline --dataset input/dataset.zip --name helmet-v1 --epochs 100 --imgsz 640
+```
+
+For native video inference:
+
+```sh
+.venv/bin/yolo-pipeline predict-video --model artifacts/jobs/JOB_ID/model/best.pt --source input/test.mp4
+```
+
+Native macOS jobs use the repository-local `input/`, `workspace/`, and `artifacts/` directories. Docker continues to use its `/workspace/...` mounts via environment variables.
+
+### Docker
 
 CPU (recommended without NVIDIA):
 

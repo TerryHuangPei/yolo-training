@@ -21,11 +21,14 @@ class JobStatus(StrEnum):
 TRANSITIONS: dict[JobStatus, set[JobStatus]] = {
     JobStatus.CREATED: {JobStatus.VALIDATING, JobStatus.FAILED},
     JobStatus.VALIDATING: {JobStatus.INVALID, JobStatus.PREPARING, JobStatus.FAILED},
-    JobStatus.INVALID: set(), JobStatus.PREPARING: {JobStatus.TRAINING, JobStatus.FAILED},
+    JobStatus.INVALID: set(),
+    JobStatus.PREPARING: {JobStatus.TRAINING, JobStatus.FAILED},
     JobStatus.TRAINING: {JobStatus.EVALUATING, JobStatus.FAILED, JobStatus.INTERRUPTED},
     JobStatus.EVALUATING: {JobStatus.INFERENCING, JobStatus.COMPLETED, JobStatus.FAILED},
     JobStatus.INFERENCING: {JobStatus.COMPLETED, JobStatus.FAILED},
-    JobStatus.COMPLETED: set(), JobStatus.FAILED: set(), JobStatus.INTERRUPTED: set(),
+    JobStatus.COMPLETED: set(),
+    JobStatus.FAILED: set(),
+    JobStatus.INTERRUPTED: set(),
 }
 
 

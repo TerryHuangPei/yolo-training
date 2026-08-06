@@ -9,9 +9,15 @@ from PIL import Image
 from app.dataset.detector import IMAGE_SUFFIXES, DatasetLayout
 from app.dataset.report import DatasetReport
 
+BBOX_TOLERANCE = 1e-5
+
 
 def _images(folder: Path) -> list[Path]:
-    return sorted(path for path in folder.rglob("*") if path.is_file() and path.suffix.lower() in IMAGE_SUFFIXES)
+    return sorted(
+        path
+        for path in folder.rglob("*")
+        if path.is_file() and path.suffix.lower() in IMAGE_SUFFIXES
+    )
 
 
 def _validate_label(path: Path, classes: list[str], report: DatasetReport) -> None:
@@ -35,9 +41,29 @@ def _validate_label(path: Path, classes: list[str], report: DatasetReport) -> No
         if not all(math.isfinite(value) for value in (x, y, width, height)):
             report.add("fatal", "bbox_finite", path, "Bounding box values must be finite", number)
         elif not 0 <= x <= 1 or not 0 <= y <= 1 or not 0 < width <= 1 or not 0 < height <= 1:
-            report.add("fatal", "bbox_range", path, "Bounding box values outside normalized range", number)
-        elif x - width / 2 < 0 or y - height / 2 < 0 or x + width / 2 > 1 or y + height / 2 > 1:
-            report.add("fatal", "bbox_bounds", path, "Bounding box exceeds image bounds", number)
+            report.add(
+                "fatal", "bbox_range", path, "Bounding box values outside normalized range", number
+            )
+        else:
+            overflow = max(
+                0.0,
+                -(x - width / 2),
+                -(y - height / 2),
+                x + width / 2 - 1,
+                y + height / 2 - 1,
+            )
+            if overflow > BBOX_TOLERANCE:
+                report.add(
+                    "fatal", "bbox_bounds", path, "Bounding box exceeds image bounds", number
+                )
+            elif overflow > 0:
+                report.add(
+                    "warning",
+                    "bbox_rounding",
+                    path,
+                    f"Bounding box exceeds bounds by {overflow:.8g}; accepted as rounding error",
+                    number,
+                )
 
 
 def validate_dataset(layout: DatasetLayout) -> DatasetReport:
@@ -69,9 +95,9 @@ def validate_dataset(layout: DatasetLayout) -> DatasetReport:
             else:
                 report.empty_images.append(str(image_path))
         if label_dir.exists():
+            image_stems = {image_path.stem for image_path in images}
             for label_path in label_dir.rglob("*.txt"):
-                image_base = label_path.relative_to(label_dir).with_suffix("")
-                if not any((image_dir / image_base).with_suffix(ext).exists() for ext in IMAGE_SUFFIXES):
+                if label_path.stem not in image_stems:
                     report.add("fatal", "missing_image", label_path, "Label has no matching image")
         split_digests[split] = current
     report.duplicate_images = [paths for paths in digests.values() if len(paths) > 1]

@@ -42,7 +42,10 @@ def extract_dataset(source: Path, destination: Path, settings: Settings) -> Path
             if total_size > settings.max_zip_bytes:
                 raise DatasetExtractionError(f"ZIP extracted size exceeds limit: {total_size}")
             for info in infos:
-                if info.compress_size and info.file_size / info.compress_size > settings.max_compression_ratio:
+                if (
+                    info.compress_size
+                    and info.file_size / info.compress_size > settings.max_compression_ratio
+                ):
                     raise DatasetExtractionError(f"Suspicious compression ratio: {info.filename}")
                 target = _safe_member(info, destination)
                 if info.is_dir():

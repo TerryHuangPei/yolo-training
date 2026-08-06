@@ -1,4 +1,6 @@
-.PHONY: build build-cpu test lint format shell pipeline clean-workspace clean-artifacts
+.PHONY: build build-cpu test lint format shell pipeline clean-workspace clean-artifacts mac-setup mac-doctor mac-test mac-lint mac-format mac-pipeline mac-help
+export YOLO_CONFIG_DIR := $(CURDIR)/.ultralytics
+export MPLCONFIGDIR := $(CURDIR)/.cache/matplotlib
 build:
 	docker compose build
 build-cpu:
@@ -19,3 +21,17 @@ clean-workspace:
 clean-artifacts:
 	@test -n "$(JOB_ID)" || (echo "Set JOB_ID=<job id>"; exit 2)
 	docker compose run --rm --entrypoint sh yolo-pipeline -c 'rm -rf /workspace/artifacts/jobs/$(JOB_ID)'
+mac-setup:
+	./scripts/setup-macos.sh
+mac-doctor:
+	.venv/bin/python scripts/macos_doctor.py
+mac-test:
+	.venv/bin/pytest
+mac-lint:
+	.venv/bin/ruff check .
+mac-format:
+	.venv/bin/ruff format .
+mac-pipeline:
+	.venv/bin/yolo-pipeline pipeline --dataset input/dataset.zip --name example
+mac-help:
+	.venv/bin/yolo-pipeline --help

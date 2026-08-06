@@ -8,6 +8,7 @@ def select_device(explicit: str | None, configured: str | None = None) -> str:
         return configured
     try:
         import torch
+
         if torch.cuda.is_available():
             return "0"
         if getattr(torch.backends, "mps", None) and torch.backends.mps.is_available():
