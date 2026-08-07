@@ -9,6 +9,7 @@ from typing import Any
 
 from app.exceptions import InferenceError
 from app.inference.serializer import detection_record
+from app.mouse import move_mouse
 
 
 def measurement_records(
@@ -58,6 +59,84 @@ def measurement_records(
     return records
 
 
+def move_to_nearest_head(
+    measurements: list[dict[str, Any]],
+    fov: float,
+    sensitivity: float,
+    duration: float,
+    steps: int,
+    smooth: bool,
+) -> dict[str, Any] | None:
+    """Move from the recorded pointer location to the nearest measured head centre.
+
+    One measurement is selected because moving sequentially to every detected head would leave
+    the pointer at an arbitrary final target. The calculated delta is added to its record.
+    """
+    if not measurements:
+        return None
+    selected = min(measurements, key=lambda measurement: measurement["distance_pixels"])
+    mouse_position = selected["mouse_position"]
+    head_center = selected["head_center"]
+    actual_dx, actual_dy = move_mouse(
+        point_a=(mouse_position["screen_x"], mouse_position["screen_y"]),
+        point_b=(head_center["screen_x"], head_center["screen_y"]),
+        fov=fov,
+        sensitivity=sensitivity,
+        duration=duration,
+        steps=steps,
+        smooth=smooth,
+    )
+    selected["mouse_movement"] = {
+        "fov": fov,
+        "sensitivity": sensitivity,
+        "actual_dx": actual_dx,
+        "actual_dy": actual_dy,
+        "selected_nearest_head": True,
+    }
+    return selected
+
+
+def draw_mouse_cursor(
+    image: Any,
+    mouse_x: int,
+    mouse_y: int,
+    monitor_left: int,
+    monitor_top: int,
+    cv2: Any,
+) -> bool:
+    """Draw a visible cursor overlay when the system pointer is on the captured monitor.
+
+    MSS intentionally captures pixels without the operating-system cursor. This function keeps
+    the preview useful without altering the actual pointer position.
+    """
+    image_x = mouse_x - monitor_left
+    image_y = mouse_y - monitor_top
+    height, width = image.shape[:2]
+    if not (0 <= image_x < width and 0 <= image_y < height):
+        return False
+    cv2.drawMarker(
+        image,
+        (image_x, image_y),
+        (0, 0, 255),
+        markerType=cv2.MARKER_CROSS,
+        markerSize=24,
+        thickness=2,
+        line_type=cv2.LINE_AA,
+    )
+    cv2.circle(image, (image_x, image_y), 5, (255, 255, 255), 1, cv2.LINE_AA)
+    cv2.putText(
+        image,
+        f"mouse ({mouse_x}, {mouse_y})",
+        (image_x + 12, max(20, image_y - 12)),
+        cv2.FONT_HERSHEY_SIMPLEX,
+        0.5,
+        (0, 0, 255),
+        1,
+        cv2.LINE_AA,
+    )
+    return True
+
+
 def predict_screen(
     model_path: Path,
     conf: float,
@@ -67,6 +146,12 @@ def predict_screen(
     target_class: str = "head",
     output: Path | None = None,
     hotkey: str = "`",
+    move_to_head: bool = False,
+    move_fov: float = 90.0,
+    move_sensitivity: float = 1.0,
+    move_duration: float = 0.2,
+    move_steps: int = 20,
+    move_smooth: bool = True,
 ) -> Path:
     """Run YOLO against a display and record a target measurement on a global hotkey.
 
@@ -145,6 +230,17 @@ def predict_screen(
                             if measurements_for_press:
                                 for measurement in measurements_for_press:
                                     measurement["triggered_at"] = triggered_at
+                                moved_measurement = None
+                                if move_to_head:
+                                    moved_measurement = move_to_nearest_head(
+                                        measurements_for_press,
+                                        move_fov,
+                                        move_sensitivity,
+                                        move_duration,
+                                        move_steps,
+                                        move_smooth,
+                                    )
+                                for measurement in measurements_for_press:
                                     measurements.write(
                                         json.dumps(measurement, ensure_ascii=False) + "\n"
                                     )
@@ -154,12 +250,28 @@ def predict_screen(
                                     f"{target_class} measurement(s) "
                                     f"from global hotkey in {output}"
                                 )
+                                if moved_measurement is not None:
+                                    movement = moved_measurement["mouse_movement"]
+                                    print(
+                                        "Moved to nearest head: "
+                                        f"({movement['actual_dx']:.2f}, "
+                                        f"{movement['actual_dy']:.2f})"
+                                    )
                             else:
                                 print(
                                     f"No '{target_class}' boxes in the current frame; "
                                     "nothing recorded."
                                 )
                         annotated = result.plot()
+                        current_mouse_x, current_mouse_y = pointer.position
+                        draw_mouse_cursor(
+                            annotated,
+                            round(current_mouse_x),
+                            round(current_mouse_y),
+                            target["left"],
+                            target["top"],
+                            cv2,
+                        )
                         elapsed_ms = (time.perf_counter() - started) * 1000
                         cv2.putText(
                             annotated,

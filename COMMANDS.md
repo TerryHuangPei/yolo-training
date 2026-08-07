@@ -51,6 +51,8 @@ make mac-doctor
 artifacts/jobs/JOB_ID/screen-clicks.jsonl
 ```
 
+預覽畫面會以紅色十字顯示目前系統游標及其座標。這是額外繪製的 overlay，因為螢幕擷取本身通常不會包含 macOS 的系統游標；它不會影響原本應用程式中的游標。
+
 每筆記錄含按鍵觸發時間（`triggered_at`）、滑鼠與中心的畫面座標（`x`、`y`）、對應的全螢幕座標（`screen_x`、`screen_y`）、目標框、信心分數、影格編號和 `distance_pixels`。一次熱鍵觸發會對畫面中每個 `head` 各寫一筆；即使游標在框外也會記錄。若該畫面沒有 `head`，才不會寫入資料。若你的類別名稱不是 `head`、想換觸發按鍵或自訂紀錄檔位置：
 
 ```sh
@@ -59,6 +61,20 @@ artifacts/jobs/JOB_ID/screen-clicks.jsonl
   --target-class helmet \
   --hotkey g \
   --output artifacts/jobs/JOB_ID/helmet-clicks.jsonl
+```
+
+要在紀錄後直接套用 `move_mouse()`，加入 `--move-to-head`。程式會將記錄中的
+`mouse_position.screen_x/y` 與 `head_center.screen_x/y` 直接傳入 `move_mouse()`；若同時
+偵測到多個 head，會移向距離游標最近的一個。
+
+```sh
+.venv/bin/yolo-pipeline predict-screen \
+  --model artifacts/jobs/JOB_ID/model/best.pt \
+  --move-to-head \
+  --move-fov 90 \
+  --move-sensitivity 1.5 \
+  --move-duration 0.2 \
+  --move-steps 20
 ```
 
 參數說明：
@@ -73,6 +89,11 @@ artifacts/jobs/JOB_ID/screen-clicks.jsonl
 | `--target-class` | `head` | 熱鍵觸發時要量測的模型類別名稱。 |
 | `--hotkey` | `` ` `` | 一個字元的全域觸發按鍵。 |
 | `--output` | 模型所在工作下的 `screen-clicks.jsonl` | 熱鍵觸發時的座標與距離 JSONL 輸出位置。 |
+| `--move-to-head` | `False` | 將滑鼠移向最近的目標 head 中心。 |
+| `--move-fov` | `90` | 傳給 `move_mouse()` 的目前 FOV。 |
+| `--move-sensitivity` | `1` | 傳給 `move_mouse()` 的靈敏度。 |
+| `--move-duration` | `0.2` | 移動所需約略秒數。 |
+| `--move-steps` | `20` | 平滑移動的分段數。 |
 
 > macOS 第一次使用時，請在「系統設定 → 隱私權與安全性 → 螢幕與系統音訊錄製」和「輔助使用」授權啟動指令的 Terminal 或 IDE。前者讓程式讀取螢幕，後者讓全域熱鍵能在原本應用程式作用中時運作。授權後請重新啟動指令。此功能必須原生執行，Docker 無法擷取宿主機桌面。
 

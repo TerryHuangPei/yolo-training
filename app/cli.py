@@ -107,11 +107,30 @@ def predict_screen_command(
     target_class: str = "head",
     output: Path | None = None,
     hotkey: str = "`",
+    move_to_head: bool = False,
+    move_fov: float = 90.0,
+    move_sensitivity: float = 1.0,
+    move_duration: float = 0.2,
+    move_steps: int = 20,
+    move_smooth: bool = True,
 ) -> None:
     """Use a global hotkey to persist pointer-to-target measurements; q/Esc stops."""
     typer.echo(
         predict_screen(
-            model, conf, imgsz, select_device(device), monitor, target_class, output, hotkey
+            model,
+            conf,
+            imgsz,
+            select_device(device),
+            monitor,
+            target_class,
+            output,
+            hotkey,
+            move_to_head,
+            move_fov,
+            move_sensitivity,
+            move_duration,
+            move_steps,
+            move_smooth,
         )
     )
 
