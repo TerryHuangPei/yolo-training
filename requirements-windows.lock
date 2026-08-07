@@ -1,0 +1,11 @@
+# Windows native dependencies. Install with scripts/setup-windows.ps1.
+# For NVIDIA CUDA, install the matching PyTorch wheel from pytorch.org before this file if needed.
+ultralytics==8.4.115
+typer>=0.12,<1
+pydantic-settings>=2.2,<3
+PyYAML>=6,<7
+Pillow>=10,<12
+mss>=10,<11
+pynput>=1.8,<2
+pytest>=8.3,<9
+ruff>=0.9,<1

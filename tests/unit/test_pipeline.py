@@ -5,7 +5,12 @@ from pathlib import Path
 import pytest
 
 from app.exceptions import JobStateError
-from app.inference.screen import draw_mouse_cursor, measurement_records, move_to_nearest_head
+from app.inference.screen import (
+    draw_mouse_cursor,
+    measurement_records,
+    move_to_nearest_head,
+    screen_capture_error_hint,
+)
 from app.inference.serializer import detection_record
 from app.pipeline.manifest import Manifest
 from app.pipeline.state import JobStatus
@@ -140,3 +145,14 @@ def test_draw_mouse_cursor_only_draws_when_pointer_is_on_captured_monitor() -> N
     assert draw_mouse_cursor(image, 110, 220, 100, 200, cv2)
     assert cv2.calls == ["marker", "circle", "text"]
     assert not draw_mouse_cursor(image, 99, 220, 100, 200, cv2)
+
+
+@pytest.mark.parametrize(
+    ("system", "expected_text"),
+    [("Darwin", "Screen Recording"), ("Windows", "same privilege level"), ("Linux", "desktop")],
+)
+def test_screen_capture_error_hint_is_platform_specific(
+    monkeypatch: pytest.MonkeyPatch, system: str, expected_text: str
+) -> None:
+    monkeypatch.setattr("app.inference.screen.platform.system", lambda: system)
+    assert expected_text in screen_capture_error_hint()

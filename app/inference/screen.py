@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import platform
 import time
 from datetime import UTC, datetime
 from pathlib import Path
@@ -10,6 +11,41 @@ from typing import Any
 from app.exceptions import InferenceError
 from app.inference.serializer import detection_record
 from app.mouse import move_mouse
+
+
+def configure_windows_dpi_awareness() -> None:
+    """Align Windows cursor and screenshot coordinates when display scaling is enabled.
+
+    The call is a no-op on other platforms. Per-monitor DPI awareness is requested before MSS and
+    pynput are initialised, so their coordinates remain comparable on mixed-DPI displays.
+    """
+    if platform.system() != "Windows":
+        return
+    try:
+        import ctypes
+
+        try:
+            ctypes.windll.shcore.SetProcessDpiAwareness(2)  # type: ignore[attr-defined]
+        except (AttributeError, OSError):
+            ctypes.windll.user32.SetProcessDPIAware()  # type: ignore[attr-defined]
+    except (AttributeError, OSError):
+        # The process may already be DPI-aware, or the legacy API may be unavailable.
+        return
+
+
+def screen_capture_error_hint() -> str:
+    """Return the platform-specific guidance for native capture, hotkeys, and pointer control."""
+    if platform.system() == "Darwin":
+        return (
+            "On macOS, grant Screen Recording plus Accessibility/Input Monitoring permission to "
+            "the application running this command."
+        )
+    if platform.system() == "Windows":
+        return (
+            "On Windows, run this command at the same privilege level as the target application "
+            "and verify the desktop is not locked or on a secure UAC screen."
+        )
+    return "Verify that the current desktop permits screen capture and global input events."
 
 
 def measurement_records(
@@ -166,6 +202,7 @@ def predict_screen(
         from pynput import keyboard, mouse
         from ultralytics import YOLO
 
+        configure_windows_dpi_awareness()
         model = YOLO(str(model_path))
         window_name = "YOLO screen inference (global hotkey; q or Esc to stop)"
         output = output or model_path.parent.parent / "screen-clicks.jsonl"
@@ -296,6 +333,5 @@ def predict_screen(
         raise
     except Exception as exc:
         raise InferenceError(
-            "Unable to capture the screen. On macOS, grant Screen Recording permission to "
-            f"the application running this command. Details: {exc}"
+            f"Unable to capture the screen. {screen_capture_error_hint()} Details: {exc}"
         ) from exc

@@ -91,7 +91,7 @@ def predict_video_command(
     output = (
         model.parent.parent / "inference"
         if model.name == "best.pt"
-        else Path("/workspace/artifacts/inference")
+        else settings_from_yaml().artifacts_dir / "inference"
     )
     typer.echo(json.dumps(predict_video(model, source, output, conf, imgsz, select_device(device))))
 

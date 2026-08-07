@@ -2,7 +2,7 @@
 
 本文件整理本專案目前提供的 CLI、Make 與 Docker 指令。除非另有說明，請先在專案根目錄執行。
 
-## 快速開始（macOS 原生執行）
+## 快速開始：原生 macOS
 
 本專案在 Apple Silicon Mac 上會自動優先使用 MPS，沒有可用 MPS 時改用 CPU。
 
@@ -24,6 +24,26 @@ make mac-doctor
 .venv/bin/pip install -e .
 ```
 
+## 快速開始：原生 Windows
+
+在 PowerShell 執行。需要 Python 3.11；首次安裝會建立 `.venv`、安裝專案相依套件並列出 CUDA/CPU 狀態。
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/setup-windows.ps1
+.venv\Scripts\python.exe scripts\windows_doctor.py
+.venv\Scripts\yolo-pipeline.exe --help
+```
+
+若使用 NVIDIA GPU，`windows-doctor` 顯示 `cuda_available=True` 時會自動選擇 CUDA。否則使用 CPU；可在訓練時明確指定 `--device 0` 或 `--device cpu`。`mps` 僅適用 macOS，不可用於 Windows。
+
+```powershell
+.venv\Scripts\yolo-pipeline.exe pipeline `
+  --dataset input\dataset.zip `
+  --name helmet-v1 `
+  --epochs 100 `
+  --imgsz 640
+```
+
 ## 常用：即時螢幕辨識 `predict-screen`
 
 以訓練完成的 `best.pt` 即時判別電腦螢幕。程式會開啟帶有偵測框的預覽視窗；按 `q` 或 `Esc` 即可停止。
@@ -36,7 +56,7 @@ make mac-doctor
 常用調整範例：
 
 ```sh
-# 第二台實體螢幕、提高最低信心分數、指定 MPS
+# 第二台實體螢幕、提高最低信心分數、指定 MPS（macOS）
 .venv/bin/yolo-pipeline predict-screen \
   --model artifacts/jobs/JOB_ID/model/best.pt \
   --monitor 2 \
@@ -51,7 +71,7 @@ make mac-doctor
 artifacts/jobs/JOB_ID/screen-clicks.jsonl
 ```
 
-預覽畫面會以紅色十字顯示目前系統游標及其座標。這是額外繪製的 overlay，因為螢幕擷取本身通常不會包含 macOS 的系統游標；它不會影響原本應用程式中的游標。
+預覽畫面會以紅色十字顯示目前系統游標及其座標。這是額外繪製的 overlay，因為螢幕擷取本身通常不會包含系統游標；它不會影響原本應用程式中的游標。
 
 每筆記錄含按鍵觸發時間（`triggered_at`）、滑鼠與中心的畫面座標（`x`、`y`）、對應的全螢幕座標（`screen_x`、`screen_y`）、目標框、信心分數、影格編號和 `distance_pixels`。一次熱鍵觸發會對畫面中每個 `head` 各寫一筆；即使游標在框外也會記錄。若該畫面沒有 `head`，才不會寫入資料。若你的類別名稱不是 `head`、想換觸發按鍵或自訂紀錄檔位置：
 
@@ -85,7 +105,7 @@ artifacts/jobs/JOB_ID/screen-clicks.jsonl
 | `--monitor` | `1` | 實體螢幕編號，第一台是 `1`、第二台是 `2`。 |
 | `--conf` | `0.25` | 最低偵測信心分數；提高可減少誤判，但可能漏判。 |
 | `--imgsz` | `640` | 模型推論影像尺寸；降低（如 `416`）通常較快，但精度可能下降。 |
-| `--device` | 自動選擇 | 可指定 `mps`、`cpu` 或 CUDA 的 `0`。 |
+| `--device` | 自動選擇 | macOS 可指定 `mps`/`cpu`；Windows 可指定 CUDA 的 `0` 或 `cpu`。 |
 | `--target-class` | `head` | 熱鍵觸發時要量測的模型類別名稱。 |
 | `--hotkey` | `` ` `` | 一個字元的全域觸發按鍵。 |
 | `--output` | 模型所在工作下的 `screen-clicks.jsonl` | 熱鍵觸發時的座標與距離 JSONL 輸出位置。 |
@@ -95,7 +115,9 @@ artifacts/jobs/JOB_ID/screen-clicks.jsonl
 | `--move-duration` | `0.2` | 移動所需約略秒數。 |
 | `--move-steps` | `20` | 平滑移動的分段數。 |
 
-> macOS 第一次使用時，請在「系統設定 → 隱私權與安全性 → 螢幕與系統音訊錄製」和「輔助使用」授權啟動指令的 Terminal 或 IDE。前者讓程式讀取螢幕，後者讓全域熱鍵能在原本應用程式作用中時運作。授權後請重新啟動指令。此功能必須原生執行，Docker 無法擷取宿主機桌面。
+> macOS 第一次使用時，請在「系統設定 → 隱私權與安全性 → 螢幕與系統音訊錄製」和「輔助使用」授權啟動指令的 Terminal 或 IDE。前者讓程式讀取螢幕，後者讓全域熱鍵能在原本應用程式作用中時運作。授權後請重新啟動指令。
+
+> Windows 使用 `predict-screen` 時，請以與目標程式相同的權限層級執行 PowerShell/IDE；一般權限的 Python 無法控制以系統管理員身分執行的程式，也無法操作鎖定畫面或 UAC 安全桌面。程式已啟用 per-monitor DPI awareness，使擷取畫面與游標座標在縮放、多螢幕環境中對齊。Windows 指令請將 `.venv/bin/yolo-pipeline` 改為 `.venv\Scripts\yolo-pipeline.exe`，路徑分隔符號改為 `\`。此功能必須原生執行，Docker 無法讀取宿主機桌面。
 
 ## 常用：完整訓練流程 `pipeline`
 
@@ -146,7 +168,7 @@ artifacts/jobs/JOB_ID/model/best.pt
 | `--model` | `yolo26n.pt` | 訓練的基底模型。 |
 | `--epochs` | `100` | 訓練輪數。 |
 | `--imgsz` | `640` | 訓練與驗證圖片尺寸。 |
-| `--device` | 自動選擇 | `mps`、`cpu` 或 `0`（CUDA GPU）。 |
+| `--device` | 自動選擇 | macOS 為 `mps`/`cpu`；Windows 為 `0`（CUDA GPU）/`cpu`。 |
 | `--batch` | 自動 | 每批圖片數。MPS／CPU 預設為 `8`。 |
 | `--min-map50` | 不限制 | 低於此 mAP@0.5 時，模型不會被提升為成果。 |
 | `--min-map50-95` | 不限制 | 低於此 mAP@0.5:0.95 時，模型不會被提升為成果。 |
@@ -215,6 +237,14 @@ make mac-format
 .venv/bin/ruff format .
 ```
 
+Windows PowerShell 對應指令：
+
+```powershell
+.venv\Scripts\pytest.exe
+.venv\Scripts\ruff.exe check .
+.venv\Scripts\ruff.exe format .
+```
+
 ## 在其他 Python 程式重用滑鼠移動函式
 
 滑鼠計算與控制封裝在 `app.mouse`，可以直接 import：
@@ -273,7 +303,7 @@ docker compose -f compose.yaml -f compose.cpu.yaml run --rm yolo-pipeline \
 make shell
 ```
 
-> 不要在 Docker 中使用 `predict-screen`；容器無法直接讀取你 Mac 的桌面。
+> 不要在 Docker 中使用 `predict-screen`；容器無法直接讀取 macOS 或 Windows 的宿主機桌面。
 
 ## 工作資料夾與清理
 

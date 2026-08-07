@@ -1,6 +1,6 @@
 # YOLO Training Pipeline
 
-Automation for validating YOLO detection datasets, training Ultralytics YOLO, promoting `best.pt`, and streaming video inference. It supports Docker on Linux/NVIDIA and native Apple Silicon macOS execution.
+Automation for validating YOLO detection datasets, training Ultralytics YOLO, promoting `best.pt`, and streaming video inference. It supports Docker on Linux/NVIDIA plus native macOS and Windows execution.
 
 ## Input datasets
 
@@ -10,9 +10,9 @@ Validation detects corrupt images, malformed labels, invalid classes/boxes, miss
 
 ## Run
 
-### Native Apple Silicon macOS
+### Native macOS (Apple Silicon)
 
-The `mac-version` branch runs directly on a Mac and deliberately does not use the Linux `amd64` Ultralytics image. This avoids Docker's `linux/amd64` versus `linux/arm64/v8` platform mismatch. Python 3.11 is required; install it with Homebrew if needed:
+Native macOS deliberately does not use the Linux `amd64` Ultralytics image. This avoids Docker's `linux/amd64` versus `linux/arm64/v8` platform mismatch. Python 3.11 is required; install it with Homebrew if needed:
 
 ```sh
 brew install python@3.11
@@ -38,7 +38,22 @@ For native video inference:
 
 Native macOS jobs use the repository-local `input/`, `workspace/`, and `artifacts/` directories. Docker continues to use its `/workspace/...` mounts via environment variables.
 
-### Live screen inference (native macOS)
+### Native Windows
+
+Windows requires Python 3.11. In PowerShell, create the virtual environment and install the native dependencies:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/setup-windows.ps1
+.venv\Scripts\python.exe scripts\windows_doctor.py
+.venv\Scripts\pytest.exe
+.venv\Scripts\yolo-pipeline.exe pipeline --dataset input\dataset.zip --name helmet-v1 --epochs 100 --imgsz 640
+```
+
+The pipeline automatically selects NVIDIA CUDA when PyTorch reports it available; otherwise it uses CPU. Use `--device 0` to require the first CUDA GPU or `--device cpu` to force CPU. MPS is macOS-only and must not be passed on Windows. For NVIDIA setup, install the matching Windows PyTorch/CUDA wheel before running the project setup, following the [official PyTorch installer](https://pytorch.org/get-started/locally/).
+
+Native Windows jobs also use the repository-local `input\`, `workspace\`, and `artifacts\` directories.
+
+### Live screen inference (native macOS and Windows)
 
 Use the trained `.pt` model to detect objects directly from one of your displays:
 
@@ -52,7 +67,7 @@ pointer is. This records its position and the centre/distance for every detected
 `artifacts/jobs/JOB_ID/screen-clicks.jsonl`. Use `--target-class NAME` to measure another model
 class, `--hotkey KEY` to change the trigger, or `--output PATH` for another JSONL.
 `--monitor 1` is the first physical display (`--monitor 2` is the next); use `--conf 0.4`,
-`--imgsz 640`, or `--device mps` as needed. On first use macOS prompts for **Screen Recording** permission. Enable it for the terminal app (or the IDE) that launched the command in **System Settings → Privacy & Security → Screen & System Audio Recording**, then restart the command. The global hotkey also requires **Accessibility** permission for that same app. This feature must run natively on macOS—Docker containers cannot access the host desktop this way.
+`--imgsz 640`, `--device mps` (macOS), or `--device 0` (Windows CUDA) as needed. On macOS, enable **Screen Recording** plus **Accessibility/Input Monitoring** for the terminal app (or IDE) in System Settings, then restart it. On Windows, run this command at the same privilege level as the target application; a normal process cannot control an elevated application, the lock screen, or secure UAC desktop. Windows processes enable per-monitor DPI awareness before capture so pointer and frame coordinates remain aligned. This feature must run natively—Docker containers cannot access the host desktop this way.
 
 ### Docker
 
