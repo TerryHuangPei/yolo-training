@@ -47,8 +47,12 @@ Use the trained `.pt` model to detect objects directly from one of your displays
 ```
 
 The display is shown in a preview window with bounding boxes; press `q` or `Esc` to stop.
+Keep working in the original application window and press the global `` ` `` key wherever the
+pointer is. This records its position and the centre/distance for every detected `head` in
+`artifacts/jobs/JOB_ID/screen-clicks.jsonl`. Use `--target-class NAME` to measure another model
+class, `--hotkey KEY` to change the trigger, or `--output PATH` for another JSONL.
 `--monitor 1` is the first physical display (`--monitor 2` is the next); use `--conf 0.4`,
-`--imgsz 640`, or `--device mps` as needed. On first use macOS prompts for **Screen Recording** permission. Enable it for the terminal app (or the IDE) that launched the command in **System Settings → Privacy & Security → Screen & System Audio Recording**, then restart the command. This feature must run natively on macOS—Docker containers cannot access the host desktop this way.
+`--imgsz 640`, or `--device mps` as needed. On first use macOS prompts for **Screen Recording** permission. Enable it for the terminal app (or the IDE) that launched the command in **System Settings → Privacy & Security → Screen & System Audio Recording**, then restart the command. The global hotkey also requires **Accessibility** permission for that same app. This feature must run natively on macOS—Docker containers cannot access the host desktop this way.
 
 ### Docker
 

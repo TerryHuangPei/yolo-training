@@ -104,9 +104,16 @@ def predict_screen_command(
     imgsz: int = 640,
     device: str | None = None,
     monitor: int = 1,
+    target_class: str = "head",
+    output: Path | None = None,
+    hotkey: str = "`",
 ) -> None:
-    """Show live detection results for a physical display; press q or Escape to stop."""
-    predict_screen(model, conf, imgsz, select_device(device), monitor)
+    """Use a global hotkey to persist pointer-to-target measurements; q/Esc stops."""
+    typer.echo(
+        predict_screen(
+            model, conf, imgsz, select_device(device), monitor, target_class, output, hotkey
+        )
+    )
 
 
 @app.command("job")

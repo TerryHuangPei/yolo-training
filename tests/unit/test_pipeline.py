@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 
 from app.exceptions import JobStateError
+from app.inference.screen import measurement_records
 from app.inference.serializer import detection_record
 from app.pipeline.manifest import Manifest
 from app.pipeline.state import JobStatus
@@ -46,3 +47,30 @@ class Box:
 def test_jsonl_serializer() -> None:
     record = detection_record(1, 0, [Box()], {0: "helmet"})
     assert record["detections"][0]["class_name"] == "helmet"
+
+
+def test_measurement_records_all_heads_even_when_pointer_is_outside_boxes() -> None:
+    frame = {
+        "frame": 4,
+        "timestamp_ms": 120,
+        "detections": [
+            {
+                "class_id": 0,
+                "class_name": "head",
+                "confidence": 0.9,
+                "box": {"x1": 10, "y1": 20, "x2": 30, "y2": 40},
+            },
+            {
+                "class_id": 0,
+                "class_name": "head",
+                "confidence": 0.8,
+                "box": {"x1": 50, "y1": 60, "x2": 70, "y2": 80},
+            },
+        ],
+    }
+    records = measurement_records(frame, 0, 0, "head", 100, 200)
+    assert len(records) == 2
+    record = records[0]
+    assert record["mouse_position"] == {"x": 0, "y": 0, "screen_x": 100, "screen_y": 200}
+    assert record["head_center"] == {"x": 20, "y": 30, "screen_x": 120, "screen_y": 230}
+    assert record["distance_pixels"] == 36.06

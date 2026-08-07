@@ -42,7 +42,23 @@ make mac-doctor
   --monitor 2 \
   --conf 0.40 \
   --imgsz 640 \
-  --device mps
+ --device mps
+```
+
+預覽視窗只用來顯示辨識結果；不必點選它。維持原本要操作的應用程式視窗為作用中視窗，無論滑鼠在哪裡，按下全域熱鍵 `` ` ``，程式就會計算滑鼠當下位置到畫面中每一個 `head` 框中心的像素距離，並立即附加一筆 JSON 記錄到：
+
+```text
+artifacts/jobs/JOB_ID/screen-clicks.jsonl
+```
+
+每筆記錄含按鍵觸發時間（`triggered_at`）、滑鼠與中心的畫面座標（`x`、`y`）、對應的全螢幕座標（`screen_x`、`screen_y`）、目標框、信心分數、影格編號和 `distance_pixels`。一次熱鍵觸發會對畫面中每個 `head` 各寫一筆；即使游標在框外也會記錄。若該畫面沒有 `head`，才不會寫入資料。若你的類別名稱不是 `head`、想換觸發按鍵或自訂紀錄檔位置：
+
+```sh
+.venv/bin/yolo-pipeline predict-screen \
+  --model artifacts/jobs/JOB_ID/model/best.pt \
+  --target-class helmet \
+  --hotkey g \
+  --output artifacts/jobs/JOB_ID/helmet-clicks.jsonl
 ```
 
 參數說明：
@@ -54,8 +70,11 @@ make mac-doctor
 | `--conf` | `0.25` | 最低偵測信心分數；提高可減少誤判，但可能漏判。 |
 | `--imgsz` | `640` | 模型推論影像尺寸；降低（如 `416`）通常較快，但精度可能下降。 |
 | `--device` | 自動選擇 | 可指定 `mps`、`cpu` 或 CUDA 的 `0`。 |
+| `--target-class` | `head` | 熱鍵觸發時要量測的模型類別名稱。 |
+| `--hotkey` | `` ` `` | 一個字元的全域觸發按鍵。 |
+| `--output` | 模型所在工作下的 `screen-clicks.jsonl` | 熱鍵觸發時的座標與距離 JSONL 輸出位置。 |
 
-> macOS 第一次使用時，請在「系統設定 → 隱私權與安全性 → 螢幕與系統音訊錄製」授權啟動指令的 Terminal 或 IDE。授權後請重新啟動指令。此功能必須原生執行，Docker 無法擷取宿主機桌面。
+> macOS 第一次使用時，請在「系統設定 → 隱私權與安全性 → 螢幕與系統音訊錄製」和「輔助使用」授權啟動指令的 Terminal 或 IDE。前者讓程式讀取螢幕，後者讓全域熱鍵能在原本應用程式作用中時運作。授權後請重新啟動指令。此功能必須原生執行，Docker 無法擷取宿主機桌面。
 
 ## 常用：完整訓練流程 `pipeline`
 
