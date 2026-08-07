@@ -194,6 +194,26 @@ make mac-format
 .venv/bin/ruff format .
 ```
 
+## 在其他 Python 程式重用滑鼠移動函式
+
+滑鼠計算與控制封裝在 `app.mouse`，可以直接 import：
+
+```python
+from app.mouse import move_mouse
+
+actual_dx, actual_dy = move_mouse(
+    point_a=(960, 540),
+    point_b=(1200, 600),
+    fov=90.0,
+    sensitivity=1.5,
+    duration=0.2,
+    steps=20,
+    smooth=True,
+)
+```
+
+內部分成 `calculate_mouse_delta()`（座標、FOV、靈敏度）、`generate_mouse_path()`（linear 或 ease-in-out 路徑）與 `move_mouse()`（透過可替換的 backend 執行）。預設 backend 為 `pynput`；在測試或改用其他平台 API 時，傳入具有 `move_relative(dx, dy)` 的物件即可。FOV 的正規化公式集中在 `calculate_mouse_delta()` 的 `fov_scale`，要校正特定遊戲時只需替換該段公式。
+
 ## Docker 指令
 
 Docker 會將本機 `input/`、`workspace/`、`artifacts/` 分別掛載至容器的 `/workspace/input`、`/workspace/jobs`、`/workspace/artifacts`。
