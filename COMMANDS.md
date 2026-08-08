@@ -49,8 +49,7 @@ powershell -ExecutionPolicy Bypass -File scripts/setup-windows.ps1
 以訓練完成的 `best.pt` 即時判別電腦螢幕。程式會開啟帶有偵測框的預覽視窗；按 `q` 或 `Esc` 即可停止。
 
 ```sh
-.venv/bin/yolo-pipeline predict-screen \
-  --model artifacts/jobs/JOB_ID/model/best.pt
+.venv/bin/yolo-pipeline predict-screen artifacts/best.pt
 ```
 
 常用調整範例：

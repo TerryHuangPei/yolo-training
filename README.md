@@ -69,6 +69,14 @@ class, `--hotkey KEY` to change the trigger, or `--output PATH` for another JSON
 `--monitor 1` is the first physical display (`--monitor 2` is the next); use `--conf 0.4`,
 `--imgsz 640`, `--device mps` (macOS), or `--device 0` (Windows CUDA) as needed. On macOS, enable **Screen Recording** plus **Accessibility/Input Monitoring** for the terminal app (or IDE) in System Settings, then restart it. On Windows, run this command at the same privilege level as the target application; a normal process cannot control an elevated application, the lock screen, or secure UAC desktop. Windows processes enable per-monitor DPI awareness before capture so pointer and frame coordinates remain aligned. This feature must run natively—Docker containers cannot access the host desktop this way.
 
+On Windows, bind recording to the mouse's Next Page side button with `--trigger mouse-forward`.
+Use `--window-title "text in the window title"` to capture only one visible window; the title
+match must be unique. For example:
+
+```powershell
+.venv\Scripts\yolo-pipeline.exe predict-screen artifacts\best.pt --trigger mouse-forward --window-title "My Game"
+```
+
 ### Docker
 
 CPU (recommended without NVIDIA):

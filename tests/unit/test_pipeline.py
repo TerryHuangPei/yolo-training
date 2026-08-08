@@ -7,9 +7,11 @@ import pytest
 from app.exceptions import JobStateError
 from app.inference.screen import (
     draw_mouse_cursor,
+    find_windows_window,
     measurement_records,
     move_to_nearest_head,
     screen_capture_error_hint,
+    select_capture_target,
 )
 from app.inference.serializer import detection_record
 from app.pipeline.manifest import Manifest
@@ -145,6 +147,19 @@ def test_draw_mouse_cursor_only_draws_when_pointer_is_on_captured_monitor() -> N
     assert draw_mouse_cursor(image, 110, 220, 100, 200, cv2)
     assert cv2.calls == ["marker", "circle", "text"]
     assert not draw_mouse_cursor(image, 99, 220, 100, 200, cv2)
+
+
+def test_select_capture_target_uses_monitor_without_window_title() -> None:
+    class Capture:
+        monitors = [{}, {"left": 0, "top": 0, "width": 100, "height": 100}]
+
+    assert select_capture_target(Capture(), 1, None) == Capture.monitors[1]
+
+
+def test_find_windows_window_rejects_non_windows(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("app.inference.screen.platform.system", lambda: "Linux")
+    with pytest.raises(Exception, match="Windows only"):
+        find_windows_window("Example")
 
 
 @pytest.mark.parametrize(

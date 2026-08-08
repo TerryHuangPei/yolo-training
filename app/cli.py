@@ -113,8 +113,10 @@ def predict_screen_command(
     move_duration: float = 0.2,
     move_steps: int = 20,
     move_smooth: bool = True,
+    trigger: str = "keyboard",
+    window_title: str | None = None,
 ) -> None:
-    """Use a global hotkey to persist pointer-to-target measurements; q/Esc stops."""
+    """Capture a screen/window and persist measurements; q/Esc stops."""
     typer.echo(
         predict_screen(
             model,
@@ -131,6 +133,8 @@ def predict_screen_command(
             move_duration,
             move_steps,
             move_smooth,
+            trigger,
+            window_title,
         )
     )
 

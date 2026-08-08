@@ -48,6 +48,64 @@ def screen_capture_error_hint() -> str:
     return "Verify that the current desktop permits screen capture and global input events."
 
 
+def find_windows_window(title_query: str) -> dict[str, int]:
+    """Return the visible top-level Windows window whose title contains ``title_query``."""
+    if platform.system() != "Windows":
+        raise InferenceError("--window-title is currently supported on Windows only.")
+    if not title_query.strip():
+        raise InferenceError("--window-title cannot be empty.")
+    import ctypes
+    from ctypes import wintypes
+
+    user32 = ctypes.windll.user32  # type: ignore[attr-defined]
+    matches: list[tuple[int, str]] = []
+    enum_proc_type = ctypes.WINFUNCTYPE(ctypes.c_bool, wintypes.HWND, wintypes.LPARAM)
+
+    def add_match(hwnd: int, _lparam: int) -> bool:
+        if not user32.IsWindowVisible(hwnd):
+            return True
+        length = user32.GetWindowTextLengthW(hwnd)
+        if not length:
+            return True
+        title = ctypes.create_unicode_buffer(length + 1)
+        user32.GetWindowTextW(hwnd, title, len(title))
+        if title_query.casefold() in title.value.casefold():
+            matches.append((hwnd, title.value))
+        return True
+
+    user32.EnumWindows(enum_proc_type(add_match), 0)
+    if not matches:
+        raise InferenceError(f"No visible window title contains {title_query!r}.")
+    if len(matches) > 1:
+        titles = ", ".join(repr(title) for _, title in matches[:5])
+        raise InferenceError(
+            f"More than one window matches {title_query!r}: {titles}. Use a more specific title."
+        )
+    rect = wintypes.RECT()
+    if not user32.GetWindowRect(matches[0][0], ctypes.byref(rect)):
+        raise InferenceError(f"Unable to determine the bounds of {matches[0][1]!r}.")
+    if rect.right <= rect.left or rect.bottom <= rect.top:
+        raise InferenceError(f"The matching window {matches[0][1]!r} has no capturable area.")
+    return {
+        "left": rect.left,
+        "top": rect.top,
+        "width": rect.right - rect.left,
+        "height": rect.bottom - rect.top,
+    }
+
+
+def select_capture_target(capture: Any, monitor: int, window_title: str | None) -> dict[str, int]:
+    """Choose either a physical display or a requested Windows window rectangle."""
+    if window_title is not None:
+        return find_windows_window(window_title)
+    if monitor < 1 or monitor >= len(capture.monitors):
+        available = len(capture.monitors) - 1
+        raise InferenceError(
+            f"Monitor {monitor} is unavailable; choose a value from 1 to {available}."
+        )
+    return capture.monitors[monitor]
+
+
 def measurement_records(
     frame_record: dict[str, Any],
     mouse_x: float,
@@ -188,12 +246,16 @@ def predict_screen(
     move_duration: float = 0.2,
     move_steps: int = 20,
     move_smooth: bool = True,
+    trigger: str = "keyboard",
+    window_title: str | None = None,
 ) -> Path:
-    """Run YOLO against a display and record a target measurement on a global hotkey.
+    """Run YOLO against a display or requested window and record target measurements.
 
     ``mss`` uses monitor 0 for the virtual desktop and starts physical displays at 1.
     """
-    if len(hotkey) != 1:
+    if trigger not in {"keyboard", "mouse-forward"}:
+        raise InferenceError("--trigger must be either 'keyboard' or 'mouse-forward'.")
+    if trigger == "keyboard" and len(hotkey) != 1:
         raise InferenceError("--hotkey must be exactly one character, for example '`'.")
     try:
         import cv2
@@ -204,31 +266,37 @@ def predict_screen(
 
         configure_windows_dpi_awareness()
         model = YOLO(str(model_path))
-        window_name = "YOLO screen inference (global hotkey; q or Esc to stop)"
+        trigger_label = hotkey if trigger == "keyboard" else "mouse-forward"
+        window_name = f"YOLO screen inference ({trigger_label}; q or Esc to stop)"
         output = output or model_path.parent.parent / "screen-clicks.jsonl"
         output.parent.mkdir(parents=True, exist_ok=True)
         with mss.mss() as capture:
-            if monitor < 1 or monitor >= len(capture.monitors):
-                available = len(capture.monitors) - 1
-                raise InferenceError(
-                    f"Monitor {monitor} is unavailable; choose a value from 1 to {available}."
-                )
-            target = capture.monitors[monitor]
+            target = select_capture_target(capture, monitor, window_title)
             cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
             pending_hotkeys: list[tuple[int, int, str]] = []
             pending_lock = Lock()
             pointer = mouse.Controller()
 
-            def on_press(key: object) -> None:
-                if not isinstance(key, keyboard.KeyCode) or key.char != hotkey:
-                    return
+            def record_trigger() -> None:
                 mouse_x, mouse_y = pointer.position
                 with pending_lock:
                     pending_hotkeys.append(
                         (round(mouse_x), round(mouse_y), datetime.now(UTC).isoformat())
                     )
 
-            listener = keyboard.Listener(on_press=on_press)
+            def on_press(key: object) -> None:
+                if isinstance(key, keyboard.KeyCode) and key.char == hotkey:
+                    record_trigger()
+
+            def on_click(_x: int, _y: int, button: object, pressed: bool) -> None:
+                if pressed and button == mouse.Button.x2:
+                    record_trigger()
+
+            listener: Any
+            if trigger == "keyboard":
+                listener = keyboard.Listener(on_press=on_press)
+            else:
+                listener = mouse.Listener(on_click=on_click)
             listener.start()
             started_at = time.perf_counter()
             frame_no = 0
@@ -312,7 +380,7 @@ def predict_screen(
                         elapsed_ms = (time.perf_counter() - started) * 1000
                         cv2.putText(
                             annotated,
-                            f"Press {hotkey}: measure pointer to all {target_class} boxes | "
+                            f"Press {trigger_label}: measure pointer to all {target_class} boxes | "
                             f"{elapsed_ms:.0f} ms/frame | q/Esc: stop",
                             (12, 30),
                             cv2.FONT_HERSHEY_SIMPLEX,
