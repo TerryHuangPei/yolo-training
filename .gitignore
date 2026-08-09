@@ -16,3 +16,5 @@ workspace/*
 !workspace/.gitkeep
 artifacts/*
 !artifacts/.gitkeep
+/screen-clicks.jsonl
+/.idea/misc.xml
